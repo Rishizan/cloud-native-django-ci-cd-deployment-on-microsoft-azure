@@ -1,0 +1,44 @@
+name: Deploy to Azure Container Instances
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  AZURE_RESOURCE_GROUP: devopsproj04-rg
+  AZURE_CONTAINER_REGISTRY: devopsproj04
+  AZURE_CONTAINER_NAME: devopsproj04
+  IMAGE_NAME: devopsproj04
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: ACR Login
+      run: az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+
+    - name: Build and Push Image
+      run: |
+        docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+        docker tag ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+    - name: Deploy to Azure Container Instance
+      uses: azure/aci-deploy@v1
+      with:
+        resource-group: ${{ env.AZURE_RESOURCE_GROUP }}
+        dns-name-label: ${{ env.AZURE_CONTAINER_NAME }}
+        image: ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        name: ${{ env.AZURE_CONTAINER_NAME }}
+        location: eastus
+        ports: 8000
