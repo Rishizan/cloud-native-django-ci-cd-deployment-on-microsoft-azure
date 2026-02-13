@@ -1,10 +1,12 @@
 name: Deploy to Azure Container Instances
 
+# Trigger this workflow on push to master branch
 on:
   push:
     branches:
       - master
 
+# Environment variables used throughout the workflow
 env:
   AZURE_RESOURCE_GROUP: devopsproj04-rg
   AZURE_CONTAINER_REGISTRY: devopsproj04
@@ -15,17 +17,23 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+    # Step 1: Checkout the repository code
     - name: Checkout
       uses: actions/checkout@v3
 
+    # Step 2: Login to Azure using service principal credentials
+    # Requires AZURE_CREDENTIALS secret to be configured in GitHub repository settings
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+    # Step 3: Authenticate with Azure Container Registry
     - name: ACR Login
       run: az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
 
+    # Step 4: Build Docker image and push to ACR
+    # Tags image with both git SHA (for versioning) and 'latest' (for convenience)
     - name: Build and Push Image
       run: |
         docker build -t ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
@@ -33,6 +41,8 @@ jobs:
         docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
         docker push ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
 
+    # Step 5: Deploy the container to Azure Container Instances
+    # This will create a new container instance or update existing one
     - name: Deploy to Azure Container Instance
       uses: azure/aci-deploy@v1
       with:

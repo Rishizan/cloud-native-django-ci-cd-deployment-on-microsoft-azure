@@ -1,8 +1,8 @@
-# Production-Ready Django Deployment on AWS: Complete ECS & ECR DevOps Pipeline
+Production-Ready Django Deployment on Azure: Complete ACI & ACR DevOps Pipeline
 
-![AWS](https://imgur.com/wLMcRHS.jpg)
+![Azure](https://imgur.com/wLMcRHS.jpg)
 
-**This comprehensive guide demonstrates how to deploy a Django-based production application onto AWS using ECS (Elastic Container Service) and ECR (Elastic Container Registry). We'll cover the complete DevOps pipeline from containerization to deployment, including security best practices, monitoring setup, and production optimization.**
+**This comprehensive guide demonstrates how to deploy a Django-based production application onto Microsoft Azure using ACI (Azure Container Instances) and ACR (Azure Container Registry). We'll cover the complete DevOps pipeline from containerization to deployment, including security best practices, monitoring setup, and production optimization.**
 
 ## 📋 Table of Contents
 
@@ -11,8 +11,10 @@
 - [Project Structure](#project-structure)
 - [Django Web Framework](#django-web-framework)
 - [Docker & Containerization](#docker--containerization)
-- [AWS ECR Setup](#aws-ecr-setup)
-- [AWS ECS Deployment](#aws-ecs-deployment)
+- [Azure ACR Setup](#azure-acr-setup)
+- [Azure ACI Deployment](#azure-aci-deployment)
+- [Terraform Infrastructure as Code](#terraform-infrastructure-as-code)
+- [CI/CD with GitHub Actions](#cicd-with-github-actions)
 - [Security & Best Practices](#security--best-practices)
 - [Monitoring & Logging](#monitoring--logging)
 - [Troubleshooting](#troubleshooting)
@@ -21,32 +23,32 @@
 
 ## 🎯 Overview
 
-This project provides a complete DevOps pipeline for deploying Django applications on AWS cloud infrastructure. The solution includes:
+This project provides a complete DevOps pipeline for deploying Django applications on Microsoft Azure cloud infrastructure. The solution includes:
 
 - **Containerization**: Docker-based application packaging
-- **Registry Management**: ECR for secure image storage
-- **Orchestration**: ECS for container management
-- **Scalability**: Auto-scaling and load balancing
-- **Security**: IAM roles, security groups, and secrets management
-- **Monitoring**: CloudWatch integration and health checks
+- **Registry Management**: Azure Container Registry (ACR) for secure image storage
+- **Orchestration**: Azure Container Instances (ACI) for container management
+- **Infrastructure as Code**: Terraform for automated resource provisioning
+- **CI/CD Pipeline**: GitHub Actions for automated build and deployment
+- **Security**: Azure RBAC, managed identities, and secrets management
+- **Monitoring**: Azure Monitor integration and health checks
 
 ## 📚 Prerequisites
 
 ### Technical Requirements
 - **Python 3.9+** installed locally
 - **Docker Desktop** or Docker Engine
-- **AWS Account** with appropriate permissions
-- **AWS CLI** configured with credentials
+- **Azure Account** with an active subscription
+- **Azure CLI** installed and configured
+- **Terraform** (optional, for infrastructure deployment)
 - **Django** framework knowledge
 - **Basic understanding** of containers and cloud concepts
 
-### AWS Permissions Required
-- Amazon ECR: Full access
-- Amazon ECS: Full access
-- Amazon EC2: Full access
-- IAM: Basic permissions for role creation
-- CloudWatch: Read/Write permissions
-- VPC: Network configuration permissions
+### Azure Permissions Required
+- Azure Container Registry: Contributor access
+- Azure Container Instances: Contributor access
+- Resource Group: Contributor access
+- Azure Monitor: Read/Write permissions (optional)
 
 ### Development Environment Setup
 ```bash
@@ -79,9 +81,15 @@ myproject/
 ├── templates/
 ├── requirements.txt
 ├── Dockerfile
-├── docker-compose.yml
 ├── .dockerignore
 ├── .env.example
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── .github/
+│   └── workflows/
+│       └── deploy.yml
 └── README.md
 ```
 
@@ -97,11 +105,11 @@ myproject/
 - **MVT Architecture**: Model-View-Template pattern
 
 ### Production Considerations
-- **Static files handling**: Use AWS S3 + CloudFront
-- **Database**: Amazon RDS (PostgreSQL/MySQL)
-- **Caching**: Redis/ElastiCache
+- **Static files handling**: Use Azure Blob Storage + Azure CDN
+- **Database**: Azure Database for PostgreSQL/MySQL
+- **Caching**: Azure Cache for Redis
 - **Session storage**: Redis or database
-- **Environment variables**: AWS Secrets Manager
+- **Environment variables**: Azure Key Vault
 
 ## 🐳 Docker & Containerization
 
@@ -123,8 +131,8 @@ myproject/
 1. **Write Dockerfile**: Define application environment
 2. **Build Image**: Create container image with dependencies
 3. **Test Locally**: Verify container works as expected
-4. **Push to Registry**: Store in ECR for deployment
-5. **Deploy**: Run containers in ECS
+4. **Push to Registry**: Store in ACR for deployment
+5. **Deploy**: Run containers in ACI
 
 ### Dockerfile Best Practices
 - Use multi-stage builds for smaller images
@@ -133,52 +141,48 @@ myproject/
 - Minimize attack surface
 - Optimize for production performance
 
-## 📦 AWS Elastic Container Registry (ECR)
+## 📦 Azure Container Registry (ACR)
 
-**Amazon Elastic Container Registry (Amazon ECR) is a fully managed container image registry service that makes it easy to store, manage, share, and deploy your container images. ECR eliminates the need to operate your own container repositories or worry about scaling the underlying infrastructure.**
+**Azure Container Registry (ACR) is a managed, private Docker registry service based on the open-source Docker Registry 2.0. Use ACR to store and manage your private Docker container images and related artifacts.**
 
 ### Key Features
 - **Fully Managed**: No infrastructure to maintain
-- **Secure**: IAM integration and encryption
-- **Scalable**: Automatic scaling based on demand
-- **Integrated**: Works seamlessly with ECS and EKS
-- **Cost-effective**: Pay only for storage and data transfer
-- **Vulnerability Scanning**: Automated security scans
+- **Secure**: Azure AD integration and encryption
+- **Geo-replication**: Replicate images across regions (Premium tier)
+- **Integrated**: Works seamlessly with ACI, AKS, and other Azure services
+- **Cost-effective**: Multiple pricing tiers to fit your needs
+- **Vulnerability Scanning**: Automated security scans (Standard/Premium tiers)
 
-### ECR Repository Setup
+### ACR Repository Setup
 
-#### Step 1: Create Repository
+#### Step 1: Create Resource Group
 ```bash
-# Using AWS CLI
-aws ecr create-repository \
-    --repository-name django-app \
-    --image-scanning-configuration scanOnPush=true \
-    --image-tag-mutability MUTABLE \
-    --region us-east-1
+# Create resource group
+az group create \
+    --name django-app-rg \
+    --location eastus
 ```
 
-#### Step 2: Configure Repository Policies
-```json
-{
-  "Version": "2008-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowPull",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::account-id:user/ecs-user"
-      },
-      "Action": [
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchGetImage",
-        "ecr:BatchCheckLayerAvailability"
-      ]
-    }
-  ]
-}
+#### Step 2: Create Container Registry
+```bash
+# Create ACR (Basic tier for development)
+az acr create \
+    --resource-group django-app-rg \
+    --name mydjangoacr \
+    --sku Basic \
+    --admin-enabled true
 ```
 
-### ECR Image Management
+#### Step 3: Get ACR Credentials
+```bash
+# Get ACR login server
+az acr show --name mydjangoacr --query loginServer --output table
+
+# Get admin credentials (for development)
+az acr credential show --name mydjangoacr
+```
+
+### ACR Image Management
 
 #### Build Docker Image
 ```bash
@@ -189,219 +193,267 @@ docker build -t django-app:latest .
 docker images | grep django-app
 ```
 
-#### Authenticate with ECR
+#### Authenticate with ACR
 ```bash
-# Get ECR login password
-aws ecr get-login-password --region us-east-1 | \
-    docker login --username AWS --password-stdin \
-    123456789012.dkr.ecr.us-east-1.amazonaws.com
+# Login to ACR
+az acr login --name mydjangoacr
+
+# Alternative: Docker login
+docker login mydjangoacr.azurecr.io
 ```
 
 #### Tag and Push Image
 ```bash
-# Tag image for ECR
+# Tag image for ACR
 docker tag django-app:latest \
-    123456789012.dkr.ecr.us-east-1.amazonaws.com/django-app:latest
+    mydjangoacr.azurecr.io/django-app:latest
 
-# Push to ECR
-docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/django-app:latest
+# Push to ACR
+docker push mydjangoacr.azurecr.io/django-app:latest
 ```
 
-#### Lifecycle Policies
+#### Build and Push Directly to ACR
 ```bash
-# Create lifecycle policy to clean up old images
-aws ecr put-lifecycle-policy \
-    --repository-name django-app \
-    --lifecycle-policy-text 'file://lifecycle-policy.json'
+# Build in ACR (recommended for production)
+az acr build \
+    --registry mydjangoacr \
+    --image django-app:latest \
+    --file Dockerfile .
 ```
 
-**lifecycle-policy.json:**
-```json
-{
-  "rules": [
-    {
-      "rulePriority": 1,
-      "description": "Keep last 10 images",
-      "selection": {
-        "tagStatus": "tagged",
-        "tagPrefixList": ["v"],
-        "countType": "imageCountMoreThan",
-        "countNumber": 10
-      },
-      "action": {
-        "type": "expire"
-      }
-    }
-  ]
-}
-```
-
-## 🚀 AWS Elastic Container Service (ECS)
-
-**Amazon Elastic Container Service (ECS) is a highly scalable, high-performance container orchestration service that supports Docker containers and allows you to easily run applications on a managed cluster of Amazon EC2 instances or AWS Fargate.**
-
-### ECS Launch Types
-
-#### EC2 Launch Type
-- **Full Control**: Access to underlying EC2 instances
-- **Cost Optimization**: Better for sustained workloads
-- **Customization**: Can install additional software
-- **Networking**: Direct control over networking configuration
-
-#### Fargate Launch Type
-- **Serverless**: No EC2 instances to manage
-- **Pay-per-use**: Billing based on vCPU and memory
-- **Isolation**: Each task gets its own isolated environment
-- **Simplicity**: Reduced operational overhead
-
-### Key ECS Components
-
-#### 1. ECS Cluster
+#### Manage Images
 ```bash
-# Create ECS cluster using AWS CLI
-aws ecs create-cluster \
-    --cluster-name django-cluster \
-    --service-connect default \
-    --region us-east-1
+# List repositories
+az acr repository list --name mydjangoacr --output table
+
+# List tags for a repository
+az acr repository show-tags --name mydjangoacr --repository django-app --output table
+
+# Delete an image tag
+az acr repository delete --name mydjangoacr --image django-app:old-tag
 ```
 
-#### 2. Task Definition
-```json
-{
-  "family": "django-task",
-  "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
-  "cpu": "256",
-  "memory": "512",
-  "executionRoleArn": "arn:aws:iam::account:role/ecsTaskExecutionRole",
-  "containerDefinitions": [
-    {
-      "name": "django-container",
-      "image": "123456789012.dkr.ecr.us-east-1.amazonaws.com/django-app:latest",
-      "portMappings": [
-        {
-          "containerPort": 8000,
-          "protocol": "tcp"
-        }
-      ],
-      "environment": [
-        {
-          "name": "DJANGO_SETTINGS_MODULE",
-          "value": "myproject.settings.production"
-        }
-      ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group": "/ecs/django-app",
-          "awslogs-region": "us-east-1",
-          "awslogs-stream-prefix": "ecs"
-        }
-      }
-    }
-  ]
-}
-```
+## 🚀 Azure Container Instances (ACI)
 
-#### 3. Service Definition
+**Azure Container Instances (ACI) offers the fastest and simplest way to run a container in Azure, without having to manage any virtual machines and without having to adopt a higher-level service. ACI is a great solution for scenarios that can operate in isolated containers, including simple applications, task automation, and build jobs.**
+
+### Key ACI Features
+
+- **Fast Startup**: Containers start in seconds
+- **Per-Second Billing**: Pay only for what you use
+- **Hypervisor Isolation**: Each container group runs in isolation
+- **Custom Sizes**: Specify exact CPU and memory requirements
+- **Persistent Storage**: Mount Azure Files shares
+- **Linux and Windows**: Support for both container types
+
+### ACI Deployment Options
+
+#### Option 1: Azure CLI Deployment
+
 ```bash
-# Create ECS service
-aws ecs create-service \
-    --cluster django-cluster \
-    --service-name django-service \
-    --task-definition django-task \
-    --desired-count 2 \
-    --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[subnet-12345,subnet-67890],securityGroups=[sg-12345],assignPublicIp=ENABLED}" \
-    --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100" \
-    --health-check-grace-period-seconds 30
+# Create container instance
+az container create \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --image mydjangoacr.azurecr.io/django-app:latest \
+    --cpu 1 \
+    --memory 1.5 \
+    --registry-login-server mydjangoacr.azurecr.io \
+    --registry-username <acr-username> \
+    --registry-password <acr-password> \
+    --dns-name-label django-app-unique \
+    --ports 8000 \
+    --environment-variables DJANGO_SETTINGS_MODULE=hello_world_django_app.settings
 ```
 
-### ECS Deployment Steps
+#### Option 2: Using Azure Portal
 
-#### Step 1: Create VPC and Networking
+1. Navigate to Azure Portal
+2. Search for "Container Instances"
+3. Click "Create"
+4. Fill in the required details:
+   - Resource group: `django-app-rg`
+   - Container name: `django-aci`
+   - Image source: Azure Container Registry
+   - Registry: Select your ACR
+   - Image: `django-app:latest`
+5. Configure networking (DNS name label)
+6. Review and create
+
+#### Check Container Status
 ```bash
-# Create VPC
-aws ec2 create-vpc --cidr-block 10.0.0.0/16 --tag-specifications 'ResourceType=vpc,Tags=[{Key=Name,Value=django-vpc}]'
+# Get container details
+az container show \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --output table
 
-# Create subnets
-aws ec2 create-subnet --vpc-id vpc-12345 --cidr-block 10.0.1.0/24 --availability-zone us-east-1a
-aws ec2 create-subnet --vpc-id vpc-12345 --cidr-block 10.0.2.0/24 --availability-zone us-east-1b
+# Get container logs
+az container logs \
+    --resource-group django-app-rg \
+    --name django-aci
 
-# Create security groups
-aws ec2 create-security-group --group-name django-sg --description "Security group for Django app" --vpc-id vpc-12345
+# Get container events
+az container attach \
+    --resource-group django-app-rg \
+    --name django-aci
 ```
 
-#### Step 2: Create IAM Roles
+#### Access Your Application
 ```bash
-# Create task execution role
-aws iam create-role --role-name ecsTaskExecutionRole --assume-role-policy-document file://trust-policy.json
-aws iam attach-role-policy --role-name ecsTaskExecutionRole --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+# Get the FQDN
+az container show \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --query ipAddress.fqdn \
+    --output tsv
+
+# Access in browser: http://<fqdn>:8000
 ```
 
-#### Step 3: Register Task Definition
+## 🏗️ Terraform Infrastructure as Code
+
+This project includes Terraform configuration for automated infrastructure provisioning.
+
+### Terraform Files Overview
+
+- **main.tf**: Main infrastructure configuration
+- **variables.tf**: Input variables for customization
+- **outputs.tf**: Output values after deployment
+
+### Deploy with Terraform
+
+#### Step 1: Initialize Terraform
 ```bash
-aws ecs register-task-definition --cli-input-json file://task-definition.json
+cd terraform
+terraform init
 ```
 
-#### Step 4: Create Service with Load Balancer
+#### Step 2: Review the Plan
 ```bash
-# Create Application Load Balancer
-aws elbv2 create-load-balancer \
-    --name django-alb \
-    --subnets subnet-12345 subnet-67890 \
-    --security-groups sg-12345
-
-# Create target group
-aws elbv2 create-target-group \
-    --name django-tg \
-    --protocol HTTP \
-    --port 8000 \
-    --vpc-id vpc-12345 \
-    --target-type ip
-
-# Create service with load balancer
-aws ecs create-service \
-    --cluster django-cluster \
-    --service-name django-service \
-    --task-definition django-task \
-    --desired-count 2 \
-    --launch-type FARGATE \
-    --load-balancers targetGroupArn=arn:aws:elasticloadbalancing:region:account:targetgroup/django-tg,containerName=django-container,containerPort=8000
+terraform plan
 ```
 
-#### Step 5: Configure Auto Scaling
+#### Step 3: Apply Configuration
 ```bash
-# Create auto scaling target
-aws application-autoscaling register-scalable-target \
-    --service-namespace ecs \
-    --resource-id service/django-cluster/django-service \
-    --scalable-dimension ecs:service:DesiredCount \
-    --min-capacity 1 \
-    --max-capacity 10
-
-# Create scaling policy
-aws application-autoscaling put-scaling-policy \
-    --service-namespace ecs \
-    --resource-id service/django-cluster/django-service \
-    --scalable-dimension ecs:service:DesiredCount \
-    --policy-name django-scale-out \
-    --policy-type TargetTrackingScaling \
-    --target-tracking-scaling-policy-configuration file://scaling-policy.json
+terraform apply
 ```
+
+#### Step 4: Get Outputs
+```bash
+# Get ACR login server
+terraform output acr_login_server
+
+# Get ACI public IP
+terraform output aci_public_ip
+
+# Get ACI FQDN
+terraform output aci_fqdn
+```
+
+#### Step 5: Build and Push Image to ACR
+```bash
+# Get ACR name from Terraform output
+ACR_NAME=$(terraform output -raw acr_login_server | cut -d'.' -f1)
+
+# Login to ACR
+az acr login --name $ACR_NAME
+
+# Build and push from project root
+cd ..
+docker build -t $ACR_NAME.azurecr.io/devopsproj04:latest .
+docker push $ACR_NAME.azurecr.io/devopsproj04:latest
+
+# Or use ACR build
+az acr build --registry $ACR_NAME --image devopsproj04:latest .
+```
+
+#### Step 6: Update Container Instance
+```bash
+# Restart the container to pull the latest image
+az container restart \
+    --resource-group devopsproj04-rg \
+    --name devopsproj04-aci
+```
+
+### Customize Terraform Variables
+
+Edit `terraform/variables.tf` or create a `terraform.tfvars` file:
+
+```hcl
+location     = "East US"
+project_name = "mydjango"
+```
+
+### Destroy Infrastructure
+```bash
+cd terraform
+terraform destroy
+```
+
+## 🔄 CI/CD with GitHub Actions
+
+This project includes a GitHub Actions workflow for automated deployment.
+
+### Workflow Overview
+
+The `.github/workflows/deploy.yml` file automates:
+1. Building the Docker image
+2. Pushing to Azure Container Registry
+3. Deploying to Azure Container Instances
+
+### Setup GitHub Secrets
+
+#### Step 1: Create Azure Service Principal
+```bash
+az ad sp create-for-rbac \
+    --name "github-actions-sp" \
+    --role contributor \
+    --scopes /subscriptions/<subscription-id>/resourceGroups/devopsproj04-rg \
+    --sdk-auth
+```
+
+Copy the JSON output.
+
+#### Step 2: Add GitHub Secret
+
+1. Go to your GitHub repository
+2. Navigate to Settings → Secrets and variables → Actions
+3. Click "New repository secret"
+4. Name: `AZURE_CREDENTIALS`
+5. Value: Paste the JSON from Step 1
+6. Click "Add secret"
+
+### Trigger Deployment
+
+Push to the `master` branch to trigger automatic deployment:
+
+```bash
+git add .
+git commit -m "Deploy to Azure"
+git push origin master
+```
+
+### Monitor Workflow
+
+1. Go to the "Actions" tab in your GitHub repository
+2. Click on the latest workflow run
+3. Monitor the build and deployment progress
 
 ## 🔒 Security & Best Practices
 
 ### Container Security
-- **Use non-root users** in containers
-- **Scan images** for vulnerabilities
-- **Implement resource limits** to prevent DoS attacks
-- **Use secrets management** instead of environment variables
+- **Use non-root users** in containers (implemented in Dockerfile)
+- **Scan images** for vulnerabilities using ACR scanning
+- **Implement resource limits** to prevent resource exhaustion
+- **Use Azure Key Vault** for secrets management
+- **Keep base images updated** regularly
 
-### AWS Security
-- **IAM Roles**: Principle of least privilege
-- **Security Groups**: Network-level security
-- **VPC**: Isolated network environment
+### Azure Security
+- **Managed Identities**: Use instead of service principals when possible
+- **Azure RBAC**: Principle of least privilege
+- **Network Security Groups**: Control network access
+- **Virtual Networks**: Isolate resources (for ACI with VNet integration)
 - **Encryption**: Data at rest and in transit
 
 ### Django Security Settings
@@ -416,43 +468,95 @@ SECURE_BROWSER_XSS_FILTER = True
 X_FRAME_OPTIONS = 'DENY'
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
+
+# Use Azure Key Vault for secrets
+SECRET_KEY = os.environ.get('SECRET_KEY')
+```
+
+### ACR Security Best Practices
+```bash
+# Enable admin user only for development
+# For production, use managed identities or service principals
+
+# Disable admin user
+az acr update --name mydjangoacr --admin-enabled false
+
+# Use repository-scoped tokens
+az acr token create \
+    --name django-token \
+    --registry mydjangoacr \
+    --scope-map _repositories_pull
 ```
 
 ## 📊 Monitoring & Logging
 
-### CloudWatch Integration
-```json
-{
-  "logConfiguration": {
-    "logDriver": "awslogs",
-    "options": {
-      "awslogs-group": "/ecs/django-app",
-      "awslogs-region": "us-east-1",
-      "awslogs-stream-prefix": "ecs",
-      "awslogs-datetime-format": "%Y-%m-%dT%H:%M:%S.%fZ"
-    }
-  }
-}
+### Azure Monitor Integration
+
+#### Enable Container Insights
+```bash
+# Create Log Analytics workspace
+az monitor log-analytics workspace create \
+    --resource-group django-app-rg \
+    --workspace-name django-logs
+
+# Get workspace ID
+WORKSPACE_ID=$(az monitor log-analytics workspace show \
+    --resource-group django-app-rg \
+    --workspace-name django-logs \
+    --query customerId -o tsv)
+
+# Get workspace key
+WORKSPACE_KEY=$(az monitor log-analytics workspace get-shared-keys \
+    --resource-group django-app-rg \
+    --workspace-name django-logs \
+    --query primarySharedKey -o tsv)
 ```
 
-### Health Checks
+#### Create Container with Logging
 ```bash
-# Configure health checks in task definition
-"healthCheck": {
-  "command": ["CMD-SHELL", "curl -f http://localhost:8000/health/ || exit 1"],
-  "interval": 30,
-  "timeout": 5,
-  "retries": 3,
-  "startPeriod": 60
-}
+az container create \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --image mydjangoacr.azurecr.io/django-app:latest \
+    --log-analytics-workspace $WORKSPACE_ID \
+    --log-analytics-workspace-key $WORKSPACE_KEY
+```
+
+### View Logs
+```bash
+# View container logs
+az container logs \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --follow
+
+# View logs in Azure Portal
+# Navigate to Container Instance → Logs
 ```
 
 ### Metrics to Monitor
 - **CPU and Memory utilization**
 - **Request/response times**
-- **Error rates**
-- **Database connections**
 - **Container restart counts**
+- **Network traffic**
+- **Application-specific metrics**
+
+### Health Checks
+
+Add a health endpoint to your Django application:
+
+```python
+# views.py
+from django.http import JsonResponse
+
+def health_check(request):
+    return JsonResponse({'status': 'healthy'}, status=200)
+
+# urls.py
+urlpatterns = [
+    path('health/', health_check),
+]
+```
 
 ## 🛠️ Troubleshooting
 
@@ -460,107 +564,143 @@ SESSION_COOKIE_SECURE = True
 
 #### Container Won't Start
 ```bash
-# Check task logs
-aws logs get-log-events \
-    --log-group-name /ecs/django-app \
-    --log-stream-name ecs/django-container/abcdef123456
+# Check container state
+az container show \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --query instanceView.state
 
-# Describe task failure
-aws ecs describe-tasks --cluster django-cluster --tasks abcdef123456
+# View detailed logs
+az container logs \
+    --resource-group django-app-rg \
+    --name django-aci
+
+# Check events
+az container show \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --query instanceView.events
+```
+
+#### Image Pull Errors
+```bash
+# Verify ACR credentials
+az acr credential show --name mydjangoacr
+
+# Test ACR login
+az acr login --name mydjangoacr
+
+# Check image exists
+az acr repository show --name mydjangoacr --repository django-app
 ```
 
 #### Network Issues
 ```bash
-# Check security group rules
-aws ec2 describe-security-groups --group-ids sg-12345
+# Check container IP and ports
+az container show \
+    --resource-group django-app-rg \
+    --name django-aci \
+    --query ipAddress
 
 # Test connectivity
-aws ecs execute-command \
-    --cluster django-cluster \
-    --task abcdef123456 \
-    --container django-container \
-    --command "curl -I http://localhost:8000" \
-    --interactive
+curl http://<fqdn>:8000/health/
 ```
 
 #### Performance Issues
-- **Monitor CloudWatch metrics**
-- **Check database connections**
-- **Review container resource limits**
-- **Analyze application logs**
+- **Monitor Azure Monitor metrics** for resource usage
+- **Check container resource limits** (CPU, memory)
+- **Review application logs** for errors
+- **Consider scaling** to Azure Kubernetes Service (AKS) for production
 
 ## 💰 Cost Optimization
 
-### ECS Cost Saving Tips
-- **Use Fargate Spot** for non-critical workloads
-- **Implement auto-scaling** to match demand
+### ACI Cost Saving Tips
+- **Use per-second billing** advantage - only pay when running
 - **Right-size containers** based on actual usage
-- **Schedule scaling** for predictable patterns
+- **Stop containers** when not needed (development/testing)
+- **Use Azure Reservations** for predictable workloads (up to 72% savings)
+- **Monitor costs** with Azure Cost Management
 
-### ECR Cost Management
-- **Implement lifecycle policies** to clean up old images
-- **Use image scanning** only when needed
+### ACR Cost Management
+- **Choose appropriate SKU**: Basic for development, Standard/Premium for production
+- **Implement retention policies** to clean up old images
+- **Use geo-replication** only when needed (Premium tier)
 - **Optimize image sizes** with multi-stage builds
+
+### Estimated Monthly Costs (East US)
+- **ACR Basic**: ~$5/month (10 GB storage included)
+- **ACI**: ~$0.0000012/vCPU-second + ~$0.00000013/GB-second
+  - Example: 0.5 vCPU, 1.5 GB, 24/7 = ~$20-25/month
 
 ## 🔄 Alternative Deployments
 
-### AWS Elastic Beanstalk
-- **Simplified deployment** process
+### Azure App Service
+- **Simplified deployment** with built-in CI/CD
 - **Built-in load balancing** and auto-scaling
-- **Managed platform** updates
-- **Less configuration** required
+- **Managed platform** with automatic updates
+- **Better for web applications** with persistent connections
 
-### Kubernetes (EKS)
-- **More complex** but highly flexible
-- **Portability** across cloud providers
-- **Rich ecosystem** and tooling
-- **Better for microservices** architecture
+### Azure Kubernetes Service (AKS)
+- **Production-grade orchestration** for complex applications
+- **Advanced scaling** and self-healing capabilities
+- **Microservices architecture** support
+- **Multi-container applications**
 
-### Serverless Options
-- **AWS Lambda** for API endpoints
-- **Amplify** for full-stack applications
-- **App Runner** for containerized apps
+### Azure Web App for Containers
+- **PaaS solution** for containerized web apps
+- **Easy deployment** from ACR
+- **Built-in CI/CD** integration
+- **Custom domains and SSL** included
+
+### Comparison
+
+| Feature | ACI | App Service | AKS |
+|---------|-----|-------------|-----|
+| Complexity | Low | Low | High |
+| Cost | Pay-per-use | Fixed pricing | Variable |
+| Scaling | Manual | Auto | Advanced |
+| Best For | Simple apps, jobs | Web apps | Microservices |
 
 ## 🎉 Success! 🎉
 
-**Congratulations! You have successfully deployed your Django Application on AWS cloud using ECS and ECR with production-ready configurations.**
+**Congratulations! You have successfully deployed your Django Application on Microsoft Azure using ACI and ACR with production-ready configurations.**
 
 ### Verification Steps
-1. **Check Load Balancer DNS** in browser
-2. **Verify SSL certificate** is working
+1. **Access your application** via the ACI FQDN
+2. **Check container status** in Azure Portal
 3. **Test application functionality**
-4. **Monitor CloudWatch metrics**
+4. **Monitor Azure Monitor metrics**
 5. **Review security configurations**
 
 ### Post-Deployment Checklist
-- [ ] SSL/TLS certificates configured
-- [ ] Database backups enabled
-- [ ] Monitoring alerts set up
-- [ ] Log rotation configured
-- [ ] Security groups reviewed
-- [ ] Auto-scaling policies tested
-- [ ] Disaster recovery plan documented
+- [ ] SSL/TLS certificates configured (use Azure Application Gateway or Azure Front Door)
+- [ ] Database configured (Azure Database for PostgreSQL/MySQL)
+- [ ] Monitoring alerts set up in Azure Monitor
+- [ ] Backup strategy implemented
+- [ ] Security best practices reviewed
+- [ ] Cost monitoring enabled
+- [ ] Documentation updated
 
 ### Next Steps
-- **Implement CI/CD pipeline** with AWS CodePipeline
-- **Add comprehensive testing** suite
-- **Set up staging environment**
+- **Implement custom domain** with Azure DNS
+- **Add SSL certificate** with Azure Application Gateway
+- **Set up staging environment** for testing
 - **Implement blue-green deployments**
-- **Add performance monitoring** with APM tools
+- **Add comprehensive testing** suite
+- **Consider migration to AKS** for production scale
 
 **Happy Learning and Happy Deploying! 🚀**
 
 ## 🛠️ Author & Community  
 
-This project is crafted by **[Harshhaa](https://github.com/NotHarshhaa)** 💡.  
-I’d love to hear your feedback! Feel free to share your thoughts.  
+This project is crafted by **[Harshhaa](https://github.com/NotHarshhaa)** 💡 and migrated to Azure by **[Rishizan](https://github.com/Rishizan)**.
+I'd love to hear your feedback! Feel free to share your thoughts.  
 
 📧 **Connect with me:**
 
-- **GitHub**: [@NotHarshhaa](https://github.com/NotHarshhaa)  
+- **GitHub**: [@Rishizan](https://github.com/Rishizan)  
+- **Original Author**: [@NotHarshhaa](https://github.com/NotHarshhaa)  
 - **Blog**: [ProDevOpsGuy](https://blog.prodevopsguytech.com)  
-- **Telegram Community**: [Join Here](https://t.me/prodevopsguy)  
-- **LinkedIn**: [Harshhaa Vardhan Reddy](https://www.linkedin.com/in/harshhaa-vardhan-reddy/)  
 
 ---
 
