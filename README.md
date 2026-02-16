@@ -1,7 +1,3 @@
-Production-Ready Django Deployment on Azure: Complete ACI & ACR DevOps Pipeline
-
-![Azure](https://imgur.com/wLMcRHS.jpg)
-
 **This comprehensive guide demonstrates how to deploy a Django-based production application onto Microsoft Azure using ACI (Azure Container Instances) and ACR (Azure Container Registry). We'll cover the complete DevOps pipeline from containerization to deployment, including security best practices, monitoring setup, and production optimization.**
 
 ## 📋 Table of Contents
